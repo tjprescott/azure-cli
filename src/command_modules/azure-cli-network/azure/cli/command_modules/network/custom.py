@@ -1535,12 +1535,13 @@ def create_vnet_gateway(resource_group_name, virtual_network_gateway_name, publi
                         vpn_type=VpnType.route_based.value,
                         asn=None, bgp_peering_address=None, peer_weight=None):
     VirtualNetworkGateway, BgpSettings, VirtualNetworkGatewayIPConfiguration, \
-        VirtualNetworkGatewaySku = get_sdk(
+        VirtualNetworkGatewaySku, AddressSpace = get_sdk(
             ResourceType.MGMT_NETWORK,
             'VirtualNetworkGateway',
             'BgpSettings',
             'VirtualNetworkGatewayIPConfiguration',
             'VirtualNetworkGatewaySku',
+            'AddressSpace',
             mod='models')
 
     client = _network_client_factory().virtual_network_gateways
@@ -1561,8 +1562,8 @@ def create_vnet_gateway(resource_group_name, virtual_network_gateway_name, publi
         vnet_gateway.enable_bgp = True
         vnet_gateway.bgp_settings = BgpSettings(asn, bgp_peering_address, peer_weight)
     if address_prefixes:
-        vnet_gateway.vpn_client_configuration = VpnClientConfiguration()
-        vnet_gateway.vpn_client_configuration.address_prefixes = address_prefixes
+        vnet_gateway.vpn_client_configuration = \
+            VpnClientConfiguration(AddressSpace(address_prefixes))
     return client.create_or_update(
         resource_group_name, virtual_network_gateway_name, vnet_gateway, raw=no_wait)
 

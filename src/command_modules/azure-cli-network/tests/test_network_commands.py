@@ -1311,10 +1311,9 @@ class NetworkVpnGatewayScenarioTest(ResourceGroupVCRTestBase): # pylint: disable
             JMESPathCheck('bgpSettings.peerWeight', 50)
         ])
 
-        conn12 = 'conn1to2'
         gateway1_id = '/subscriptions/{}/resourceGroups/{}/providers/Microsoft.Network/virtualNetworkGateways/{}'.format(subscription_id, rg, self.gateway1_name)
-        self.cmd('network vpn-connection create -n {} -g {} --shared-key 123 --vnet-gateway1 {} --vnet-gateway2 {}'.format(conn12, rg, gateway1_id, self.gateway2_name))
-        self.cmd('network vpn-connection update -n {} -g {} --routing-weight 25'.format(conn12, rg),
+        self.cmd('network vpn-connection create -n myconnection -g {} --shared-key 123 --vnet-gateway1 {} --vnet-gateway2 {}'.format(rg, gateway1_id, self.gateway2_name))
+        self.cmd('network vpn-connection update -n myconnection -g {} --routing-weight 25'.format(rg),
             checks=JMESPathCheck('routingWeight', 25))
 
         # TODO: Re-enable test once issue #3385 is fixed.
@@ -1328,6 +1327,23 @@ class NetworkVpnGatewayScenarioTest(ResourceGroupVCRTestBase): # pylint: disable
         # self.cmd('network watcher troubleshooting start -g {} --resource {} --resource-type vpnConnection --storage-account {} --storage-path {}'.format(rg, conn12, storage_account, storage_path))
         # self.cmd('network watcher troubleshooting show -g {} --resource {} --resource-type vpnConnection'.format(rg, conn12))
 
+class NetworkVpnClientPackageScenarioTest(ScenarioTest):
+
+    @ResourceGroupPreparer('cli_test_vpn_client_package')
+    def test_vpn_client_package(self, resource_group):
+        rg = self.resource_group
+        vnet = 'vnet1'
+        public_ip = 'pip1'
+        gateway_prefix = '100.1.1.0/24'
+        gateway = 'vgw1'
+        cert = 'cert1'
+
+        self.cmd('network vnet create -g {} -n {} --subnet-name GatewaySubnet'.format(rg, vnet))
+        self.cmd('network public-ip create -g {} -n {}'.format(rg, public_ip))
+        self.cmd('network vnet-gateway create -g {} -n {} --address-prefix {} --vnet {} --public-ip-address'.format(rg, gateway, gateway_prefix, vnet, public_ip))
+        self.cmd("network vnet-gateway root-cert create -g {} --gateway-name {} -n {} --public-cert-data ''".format(rg, gateway, cert))
+        self.cmd('network vnet-gateway get-vpn-client -g {} -n {} -a X86'.format(rg, gateway))
+        self.cmd('network vnet-gateway get-vpn-client -g {} -n {} -a Amd64'.format(rg, gateway))
 
 class NetworkTrafficManagerScenarioTest(ResourceGroupVCRTestBase):
 

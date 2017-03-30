@@ -384,11 +384,13 @@ cli_command(__name__, 'network vnet-gateway delete', vgw_path + 'delete', cf_vir
 cli_command(__name__, 'network vnet-gateway show', vgw_path + 'get', cf_virtual_network_gateways, exception_handler=empty_on_404)
 cli_command(__name__, 'network vnet-gateway list', vgw_path + 'list', cf_virtual_network_gateways)
 cli_command(__name__, 'network vnet-gateway reset', vgw_path + 'reset', cf_virtual_network_gateways)
+cli_command(__name__, 'network vnet-gateway get-vpn-client', vgw_path + 'generatevpnclientpackage', cf_virtual_network_gateways)
 cli_command(__name__, 'network vnet-gateway create', custom_path + 'create_vnet_gateway', no_wait_param='no_wait', transform=transform_vnet_gateway_create_output)
 cli_generic_update_command(__name__, 'network vnet-gateway update',
                            vgw_path + 'get', vgw_path + 'create_or_update', cf_virtual_network_gateways,
                            custom_function_op=custom_path + 'update_vnet_gateway', no_wait_param='raw')
 cli_generic_wait_command(__name__, 'network vnet-gateway wait', vgw_path + 'get', cf_virtual_network_gateways)
+
 
 cli_command(__name__, 'network vnet-gateway root-cert create', custom_path + 'create_vnet_gateway_root_cert')
 cli_command(__name__, 'network vnet-gateway root-cert delete', custom_path + 'delete_vnet_gateway_root_cert')
