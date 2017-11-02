@@ -2656,7 +2656,10 @@ def list_traffic_manager_endpoints(resource_group_name, profile_name, endpoint_t
 # region DNS Commands
 
 def create_dns_zone(client, resource_group_name, zone_name, location='global', tags=None,
-                    if_none_match=False, zone_type=None, resolution_vnets=None, registration_vnets=None):
+                    if_none_match=False, zone_type=None, resolution_vnets=None, registration_vnets=None,
+                    punycode_encode=False):
+    if punycode_encode:
+        zone_name = zone_name.encode('idna').decode('utf-8')
     zone = Zone(location=location, tags=tags)
 
     if hasattr(zone, 'zone_type'):
@@ -2694,6 +2697,15 @@ def list_dns_zones(resource_group_name=None):
         return ncf.list_by_resource_group(resource_group_name)
 
     return ncf.list()
+
+
+def show_dns_zone(client, resource_group_name, zone_name, punycode_decode=False, punycode_encode=False):
+    if punycode_encode:
+        zone_name = zone_name.encode('idna').decode('utf-8')
+    zone = client.get(resource_group_name, zone_name)
+    if punycode_decode:
+        zone.name = zone.name.encode('idna').decode('idna')
+    return zone
 
 
 def create_dns_record_set(resource_group_name, zone_name, record_set_name, record_set_type,

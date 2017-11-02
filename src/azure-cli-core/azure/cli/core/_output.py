@@ -39,7 +39,7 @@ def format_json(obj):
     # OrderedDict.__dict__ is always '{}', to persist the data, convert to dict first.
     input_dict = dict(result) if hasattr(result, '__dict__') else result
     return json.dumps(input_dict, indent=2, sort_keys=True, cls=ComplexEncoder,
-                      separators=(',', ': ')) + '\n'
+                      separators=(',', ': '), ensure_ascii=False) + '\n'
 
 
 def format_json_color(obj):
@@ -119,8 +119,9 @@ class OutputProducer(object):  # pylint: disable=too-few-public-methods
                 pass
             else:
                 raise
-        except UnicodeEncodeError:
-            print(output.encode('ascii', 'ignore').decode('utf-8', 'ignore'),
+        except UnicodeEncodeError as ex:
+            
+            print(output.encode('ascii', 'backslashreplace').decode('utf-8', 'replace'),
                   file=self.file, end='')
 
     @staticmethod

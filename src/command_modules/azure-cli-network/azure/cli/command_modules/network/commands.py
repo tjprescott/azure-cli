@@ -490,9 +490,7 @@ cli_command(__name__, 'network traffic-manager endpoint show-geographic-hierarch
 
 # DNS ZonesOperations
 dns_zone_path = 'azure.mgmt.dns.operations.zones_operations#ZonesOperations.'
-cli_command(__name__, 'network dns zone show', dns_zone_path + 'get', cf_dns_mgmt_zones, table_transformer=transform_dns_zone_table_output, exception_handler=empty_on_404)
-cli_command(__name__, 'network dns zone delete', dns_zone_path + 'delete', cf_dns_mgmt_zones, confirmation=True)
-cli_command(__name__, 'network dns zone show', dns_zone_path + 'get', cf_dns_mgmt_zones, table_transformer=transform_dns_zone_table_output, exception_handler=empty_on_404)
+cli_command(__name__, 'network dns zone show', custom_path + 'show_dns_zone', cf_dns_mgmt_zones, table_transformer=transform_dns_zone_table_output, exception_handler=empty_on_404)
 cli_command(__name__, 'network dns zone delete', dns_zone_path + 'delete', cf_dns_mgmt_zones, confirmation=True)
 cli_command(__name__, 'network dns zone list', custom_path + 'list_dns_zones', table_transformer=transform_dns_zone_table_output)
 cli_generic_update_command(__name__, 'network dns zone update', dns_zone_path + 'get', dns_zone_path + 'create_or_update', cf_dns_mgmt_zones, custom_function_op=custom_path + 'update_dns_zone')
