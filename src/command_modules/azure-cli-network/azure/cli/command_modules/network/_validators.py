@@ -5,8 +5,8 @@
 
 import argparse
 import base64
-import socket
 import os
+import socket
 
 from msrestazure.tools import is_valid_resource_id, resource_id
 from azure.cli.core.commands.validators import \

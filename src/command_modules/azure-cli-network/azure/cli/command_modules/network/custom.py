@@ -6,6 +6,7 @@ from __future__ import print_function
 
 from collections import Counter, OrderedDict
 import mock
+import os
 
 from msrestazure.azure_exceptions import CloudError
 from msrestazure.tools import parse_resource_id, is_valid_resource_id, resource_id
@@ -2655,11 +2656,43 @@ def list_traffic_manager_endpoints(resource_group_name, profile_name, endpoint_t
 
 # region DNS Commands
 
+def _convert_to_punycode(value):
+    try:
+        converted = value.encode('idna').decode('utf-8')
+    except TypeError:
+        try:
+            converted = value.decode('raw_unicode_escape').encode('idna').decode('utf-8')
+        except Exception as ex:
+            raise ex
+    return converted
+
+
+def _convert_from_punycode(value, warning_on_error):
+
+    def convert_character(char):
+        try:
+            print(char, file=open(os.devnull, 'w'))
+        except UnicodeEncodeError:
+            char = char.encode('raw_unicode_escape').decode('utf-8')
+        return char
+    converted = value.encode('idna').decode('idna')
+    error = False
+    try:
+        print(converted, file=open(os.devnull, 'w'))
+    except UnicodeEncodeError:
+        if warning_on_error:
+            logger.warning("At least one Punycode value contains characters that cannot be displayed on your terminal. "
+                           "Displaying unicode escaped representation instead.")
+        error = True
+        converted = ''.join((convert_character(c) for c in converted))
+    return (converted, error)
+
+
 def create_dns_zone(client, resource_group_name, zone_name, location='global', tags=None,
                     if_none_match=False, zone_type=None, resolution_vnets=None, registration_vnets=None,
                     punycode_encode=False):
     if punycode_encode:
-        zone_name = zone_name.encode('idna').decode('utf-8')
+        zone_name = _convert_to_punycode(zone_name)
     zone = Zone(location=location, tags=tags)
 
     if hasattr(zone, 'zone_type'):
@@ -2691,20 +2724,24 @@ def update_dns_zone(instance, tags=None, zone_type=None, resolution_vnets=None, 
     return instance
 
 
-def list_dns_zones(resource_group_name=None):
+def list_dns_zones(resource_group_name=None, punycode_decode=False):
     ncf = get_mgmt_service_client(DnsManagementClient).zones
-    if resource_group_name:
-        return ncf.list_by_resource_group(resource_group_name)
-
-    return ncf.list()
+    zones = list(ncf.list_by_resource_group(resource_group_name)) if resource_group_name else list(ncf.list())
+    warning_printed = False
+    if punycode_decode:
+        for zone in zones:
+            zone.name, error = _convert_from_punycode(zone.name, not warning_printed)
+            if error:
+                warning_printed = True
+    return zones
 
 
 def show_dns_zone(client, resource_group_name, zone_name, punycode_decode=False, punycode_encode=False):
     if punycode_encode:
-        zone_name = zone_name.encode('idna').decode('utf-8')
+        zone_name = _convert_to_punycode(zone_name)
     zone = client.get(resource_group_name, zone_name)
     if punycode_decode:
-        zone.name = zone.name.encode('idna').decode('idna')
+        zone.name, error = _convert_from_punycode(zone.name, True)
     return zone
 
 
