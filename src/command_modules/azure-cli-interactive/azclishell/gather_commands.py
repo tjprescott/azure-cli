@@ -93,17 +93,17 @@ class GatherCommands(object):
 
     def add_exit(self):
         """ adds the exits from the application """
-        self.completable.append("quit")
-        self.completable.append("exit")
+        self.completable.append('quit')
+        self.completable.append('exit')
 
-        self.descrip["quit"] = "Exits the program"
-        self.descrip["exit"] = "Exits the program"
+        self.descrip['quit'] = 'Exits the program'
+        self.descrip['exit'] = 'Exits the program'
 
-        self.command_tree.children.append(CommandBranch("quit"))
-        self.command_tree.children.append(CommandBranch("exit"))
+        self.command_tree.children['quit'] = CommandBranch('quit')
+        self.command_tree.children['exit'] = CommandBranch('exit')
 
-        self.command_param["quit"] = ""
-        self.command_param["exit"] = ""
+        self.command_param['quit'] = ''
+        self.command_param['exit'] = ''
 
     def _gather_from_files(self, config):
         """ gathers from the files in a way that is convienent to use """
@@ -122,10 +122,10 @@ class GatherCommands(object):
                 if word not in self.completable:
                     self.completable.append(word)
                 if branch.children is None:
-                    branch.children = []
+                    branch.children = {}
                 if not branch.has_child(word):
-                    branch.children.append(CommandBranch(word))
-                branch = branch.get_child(word, branch.children)
+                    branch.children[word] = CommandBranch(word)
+                branch = branch.children[word]
 
             description = data[command]['help']
             self.descrip[command] = add_new_lines(description, line_min=int(cols) - 2 * TOLERANCE)
@@ -139,23 +139,21 @@ class GatherCommands(object):
                 self.command_example[command] = examples
 
             all_params = []
-            command_params = data[command].get('parameters') or []
-            for param in command_params:
+            command_params = data[command].get('parameters') or {}
+            for param_name, param in command_params.items():
                 suppress = False
 
-                if command_params[param]['help'] and \
-                   '==SUPPRESS==' in command_params[param]['help']:
+                if param['help'] and '==SUPPRESS==' in param['help']:
                     suppress = True
-                if command_params[param]['help'] and not suppress:
+                if param['help'] and not suppress:
                     param_aliases = set()
 
-                    for par in command_params[param]['name']:
+                    for par in param['name']:
                         param_aliases.add(par)
 
-                        self.param_descript[command + " " + par] =  \
+                        self.param_descript[command + ' ' + par] = \
                             add_new_lines(
-                                command_params[param]['required'] +
-                                " " + command_params[param]['help'],
+                                param['required'] + ' ' + param['help'],
                                 line_min=int(cols) - 2 * TOLERANCE)
                         if par not in self.completable_param:
                             self.completable_param.append(par)
@@ -173,6 +171,6 @@ class GatherCommands(object):
         for command in self.descrip:
             for word in command.split():
                 for kid in self.command_tree.children:
-                    if word != kid.data and word not in subcommands:
+                    if word != kid and word not in subcommands:
                         subcommands.append(word)
         return subcommands

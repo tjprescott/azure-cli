@@ -8,17 +8,7 @@ class CommandTree(object):
     """ a command tree """
     def __init__(self, data, children=None):
         self.data = data
-        if not children:
-            self.children = []
-        else:
-            self.children = children
-
-    def get_child(self, child_name, kids):  # pylint: disable=no-self-use
-        """ returns the object with the name supplied """
-        for kid in kids:
-            if kid.data == child_name:
-                return kid
-        raise ValueError("Value not in this tree")
+        self.children = children or {}
 
     def add_child(self, child):
         """ adds a child to this branch """
@@ -29,9 +19,7 @@ class CommandTree(object):
 
     def has_child(self, name):
         """ whether this has a child """
-        if not self.children:
-            return False
-        return any(kid.data == name for kid in self.children)
+        return name in self.children or {}
 
 
 class CommandHead(CommandTree):
@@ -45,7 +33,7 @@ class CommandHead(CommandTree):
         data_split = data.split()
         kids = self.children
         for word in data_split:
-            kid = self.get_child(word, kids)
+            kid = kids[word]
             kids = kid.children
 
         return self._get_subbranch_help(kids, [])
@@ -97,7 +85,7 @@ def in_tree(tree, cmd):
             if data[0] == tree.data:
                 for datum in data[1:]:
                     if tree.has_child(datum):
-                        tree = tree.get_child(datum, tree.children)
+                        tree = tree.children[datum]
                     else:
                         return False
             else:
@@ -105,7 +93,7 @@ def in_tree(tree, cmd):
         else:
             for datum in data:
                 if tree.has_child(datum):
-                    tree = tree.get_child(datum, tree.children)
+                    tree = tree.children[datum]
                 else:
                     return False
     except ValueError:

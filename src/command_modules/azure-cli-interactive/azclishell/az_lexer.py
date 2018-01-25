@@ -19,7 +19,7 @@ def get_az_lexer(config):
             tokens = {
                 'root': [
                     (words(
-                        tuple(kid.data for kid in commands.command_tree.children),
+                        tuple(commands.command_tree.children.keys()),
                         prefix=r'\b',
                         suffix=r'\b'),
                         Keyword),  # top level commands
