@@ -14,6 +14,8 @@ from automation.tests.nose_helper import get_nose_runner
 
 def run_tests(modules, parallel, run_live, tests):
 
+    import timeit
+
     if not modules and not tests:
         display('No tests set to run.')
         sys.exit(1)
@@ -37,11 +39,15 @@ def run_tests(modules, parallel, run_live, tests):
     old_stderr = sys.stderr
     test_stderr = StringIO()
     sys.stderr = test_stderr
-    runner = get_nose_runner(parallel=parallel, process_timeout=3600 if run_live else 600)
-    results = runner([path for path in test_paths])
+    results = []
+    start_time = timeit.default_timer()
+    for path in test_paths:
+        results.append(get_nose_runner(parallel=parallel, process_timeout=3600 if run_live else 600)([path]))
     stderr_val = test_stderr.getvalue()
     sys.stderr = old_stderr
     test_stderr.close()
+    elapsed_time = timeit.default_timer() - start_time
+    print('ELAPSED: {}'.format(elapsed_time))
     failed_tests = summarize_tests(stderr_val)
     return results, failed_tests
 
