@@ -21,7 +21,7 @@ from azure.cli.command_modules.backup._validators import \
 allowed_container_types = ['AzureIaasVM']
 allowed_workload_types = ['VM']
 
-vault_name_type = CLIArgumentType(help='Name of the Recovery services vault.', options_list=['--vault-name', '-v'], completer=get_resource_name_completion_list('Microsoft.RecoveryServices/vaults'))
+vault_name_type = CLIArgumentType(help='Name of the Recovery services vault.', options_list=['--vault-name', '-v'], completer=get_resource_name_completion_list('Microsoft.RecoveryServices/vaults'), id_part='name')
 container_name_type = CLIArgumentType(help='Name of the container.', options_list=['--container-name', '-c'])
 item_name_type = CLIArgumentType(help='Name of the backed up item.', options_list=['--item-name', '-i'])
 policy_name_type = CLIArgumentType(help='Name of the backup policy.', options_list=['--policy-name', '-p'])
@@ -131,3 +131,7 @@ def load_arguments(self, _):
 
     with self.argument_context('backup job wait') as c:
         c.argument('timeout', type=int, help='Maximum time, in seconds, to wait before aborting.')
+
+    with self.argument_context('backup policy create') as c:
+        c.argument('policy_name', help='Name of the policy.', arg_type=policy_name_type)
+        c.argument('tags', help='Tags...')

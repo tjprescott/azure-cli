@@ -873,3 +873,9 @@ def _get_operation_id_from_header(header):
 def _get_vault_from_arm_id(arm_id):
     m = re.search('(?<=vaults/)[^/]+', arm_id)
     return m.group(0)
+
+
+def create_policy_for_vm(
+    cmd, client, resource_group_name, vault_name, policy_name, tags=None,
+    retention='30 days', schedule='daily 00:00:00'):
+    pass

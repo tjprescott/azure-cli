@@ -45,6 +45,7 @@ def load_command_table(self, _):
         g.command('list-associated-items', 'list_associated_items_for_policy', client_factory=backup_protected_items_cf, table_transformer=transform_item_list)
         g.command('set', 'set_policy')
         g.command('delete', 'delete_policy')
+        g.command('create', 'create_policy_for_vm')
 
     with self.command_group('backup protection', backup_custom, client_factory=protected_items_cf) as g:
         g.command('enable-for-vm', 'enable_protection_for_vm')

@@ -204,3 +204,32 @@ helps['backup job wait'] = """
             type: command
             short-summary: Wait until either the job completes or the specified timeout value is reached.
             """
+
+helps['backup policy create'] = """
+    type: command
+    parameters:
+        - name: --retention
+          short-summary: >
+            How long to retain backups.
+          long-summary: |
+            Usage: VAL {days,weeks,months,years}
+        - name: --schedule
+          short-summary: >
+            How often to perform backups. Daily and weekly schedules are supported.
+          long-summary: |
+            Daily:  --schedule daily [TIME [TIME...]]
+            Weekly: --schedule [NUM] weeks DAY [DAY...] [TIME [TIME...]]
+    examples:
+        - name: Create a policy for a daily midnight backup that is retained for 30 days.
+          text: >
+            az backup policy create -g MyRg -v myVault -n mypolicy
+        - name: Create a policy for a daily backups at 6am and 6pm that are retained for 2 months.
+          text: >
+            az backup policy create -g MyRg -v myVault -n mypolicy --schedule daily 06:00:00 18:00:00 \\
+                --retention 2 months
+        - name: >
+            Create a policy that that a backup every 2 weeks on Monday at midnight. Backups are retained for 1 year.
+          text: >
+            az backup policy create -g MyRg -v myVault -n mypolicy --schedule 2 weeks Monday \\
+                --retention 1 year
+"""
