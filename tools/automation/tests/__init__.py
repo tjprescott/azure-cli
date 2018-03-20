@@ -78,7 +78,7 @@ def execute(args):
         selected_modules = filter_user_selected_modules_with_tests(selected_modules, args.profile)
         args.tests = test_paths
 
-    success, failed_tests = run_tests(selected_modules, parallel=args.parallel, run_live=args.live, tests=args.tests)
+    success, failed_tests = run_tests(selected_modules, parallel=args.parallel, run_live=args.live, tests=args.tests, runner=args.runner)
     if args.dest_file:
         with open(args.dest_file, 'w') as f:
             for failed_test in failed_tests:
@@ -295,6 +295,7 @@ def setup_arguments(parser):
                                                                                  'fully qualified paths when using --tests.')
     parser.add_argument('--profile', dest='profile', help='Run automation against a specific profile. If omit, the '
                                                           'tests will run against current profile.')
+    parser.add_argument('--runner', dest='runner', help='Pytest or nose', default='nose', choices=['nose', 'pytest'])
     parser.set_defaults(func=execute)
 
     return parser

@@ -9,10 +9,11 @@ import sys
 from automation.utilities.display import display, output
 from automation.utilities.path import get_repo_root, get_test_results_dir
 from automation.tests.nose_helper import get_nose_runner
+from automation.tests.pytest_helper import get_pytest_runner
 
 
 
-def run_tests(modules, parallel, run_live, tests):
+def run_tests(modules, parallel, run_live, tests, runner):
 
     import timeit
 
@@ -34,15 +35,24 @@ def run_tests(modules, parallel, run_live, tests):
 
     test_paths = tests or [p for _, _, p in modules]
 
-    display('Drive test by nosetests')
+    display('Drive test by {}'.format(runner))
     from six import StringIO
     old_stderr = sys.stderr
     test_stderr = StringIO()
     sys.stderr = test_stderr
     results = []
     start_time = timeit.default_timer()
-    for path in test_paths:
-        results.append(get_nose_runner(parallel=parallel, process_timeout=3600 if run_live else 600)([path]))
+    if runner == 'pytest':
+        def convert_to_pytest_path(path):
+            path = path.replace('.', ':')
+            path = path.replace(':', '::')
+            path = path.replace('::py', '.py')
+            path = path.replace('::\\', ':\\')
+            return str(path)
+        test_paths = [convert_to_pytest_path(x) for x in test_paths]
+        results.append(get_pytest_runner(parallel=parallel)(test_paths))
+    else:
+        results.append(get_nose_runner(parallel=parallel, process_timeout=3600 if run_live else 600)(test_paths))
     stderr_val = test_stderr.getvalue()
     sys.stderr = old_stderr
     test_stderr.close()
