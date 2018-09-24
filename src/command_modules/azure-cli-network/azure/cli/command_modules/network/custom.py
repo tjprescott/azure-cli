@@ -77,7 +77,6 @@ def _get_default_value(balancer, property_name, option_name, return_name):
         raise CLIError("No existing values found for '{0}'. Create one first and try "
                        "again.".format(option_name))
     return values[0].rsplit('/', 1)[1] if return_name else values[0]
-
 # endregion
 
 
@@ -138,7 +137,6 @@ def list_application_gateways(cmd, resource_group_name=None):
 
 def list_network_watchers(cmd, resource_group_name=None):
     return _generic_list(cmd.cli_ctx, 'network_watchers', resource_group_name)
-
 # endregion
 
 
@@ -824,8 +822,6 @@ def list_ag_waf_rule_sets(client, _type=None, version=None, group=None):
             filtered_results.append(rule_set)
 
     return filtered_results
-
-
 # endregion
 
 
@@ -840,7 +836,6 @@ def update_asg(instance, tags=None):
     if tags is not None:
         instance.tags = tags
     return instance
-
 # endregion
 
 
@@ -859,9 +854,10 @@ def create_ddos_plan(cmd, resource_group_name, ddos_plan_name, location=None, ta
 
     SubResource = cmd.get_models('SubResource')
     logger.info('Attempting to attach VNets to newly created DDoS protection plan.')
-    for vnet_subresource in vnets:
+
+    for vnet in vnets:
         vnet_client = network_client_factory(cmd.cli_ctx).virtual_networks
-        id_parts = parse_resource_id(vnet_subresource.id)
+        id_parts = parse_resource_id(vnet)
         vnet = vnet_client.get(id_parts['resource_group'], id_parts['name'])
         vnet.ddos_protection_plan = SubResource(id=plan_id)
         vnet_client.create_or_update(id_parts['resource_group'], id_parts['name'], vnet)
@@ -2749,7 +2745,6 @@ def run_network_configuration_diagnostic(cmd, client, watcher_rg, watcher_name, 
             destination_port=destination_port
         )]
     return client.get_network_configuration_diagnostic(watcher_rg, watcher_name, resource, queries)
-
 # endregion
 
 
@@ -2861,7 +2856,6 @@ def create_route_filter_rule(cmd, client, resource_group_name, route_filter_name
     return client.create_or_update(resource_group_name, route_filter_name, rule_name,
                                    RouteFilterRule(access=access, communities=communities,
                                                    location=location))
-
 # endregion
 
 
@@ -3074,8 +3068,6 @@ def list_traffic_manager_endpoints(cmd, resource_group_name, profile_name, endpo
     client = get_mgmt_service_client(cmd.cli_ctx, TrafficManagerManagementClient).profiles
     profile = client.get(resource_group_name, profile_name)
     return [e for e in profile.endpoints if not endpoint_type or e.type.endswith(endpoint_type)]
-
-
 # endregion
 
 
@@ -3269,7 +3261,6 @@ def update_vnet_peering(cmd, resource_group_name, virtual_network_name, virtual_
     ncf = network_client_factory(cmd.cli_ctx, aux_subscriptions=[aux_subscription])
     return ncf.virtual_network_peerings.create_or_update(
         resource_group_name, virtual_network_name, virtual_network_peering_name, peering)
-
 # endregion
 
 
@@ -3583,8 +3574,7 @@ def _generatevpnclientpackage(
     # Construct URL
     url = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworkGateways/{virtualNetworkGatewayName}/generatevpnclientpackage'
     return _vpn_client_core(self, url, resource_group_name, virtual_network_gateway_name, parameters, custom_headers, raw, **operation_config)
-
-# endregion VPN CLIENT WORKAROUND`
+# endregion VPN CLIENT WORKAROUND
 
 
 def generate_vpn_client(cmd, client, resource_group_name, virtual_network_gateway_name, processor_architecture=None,
@@ -3602,7 +3592,6 @@ def generate_vpn_client(cmd, client, resource_group_name, virtual_network_gatewa
 
     # legacy implementation
     return _generatevpnclientpackage(client, resource_group_name, virtual_network_gateway_name, params)
-
 # endregion
 
 

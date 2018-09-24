@@ -77,19 +77,6 @@ def get_vnet_validator(dest):
     return _validate_vnet_name_or_id
 
 
-def validate_ddos_name_or_id(cmd, namespace):
-
-    if namespace.ddos_protection_plan:
-        from msrestazure.tools import is_valid_resource_id, resource_id
-        if not is_valid_resource_id(namespace.ddos_protection_plan):
-            namespace.ddos_protection_plan = resource_id(
-                subscription=get_subscription_id(cmd.cli_ctx),
-                resource_group=namespace.resource_group_name,
-                namespace='Microsoft.Network', type='ddosProtectionPlans',
-                name=namespace.ddos_protection_plan
-            )
-
-
 # pylint: disable=inconsistent-return-statements
 def dns_zone_name_type(value):
     if value:
@@ -143,21 +130,6 @@ def _generate_lb_id_list_from_names_or_ids(cli_ctx, namespace, prop, child_type)
 def validate_address_pool_id_list(cmd, namespace):
     _generate_lb_id_list_from_names_or_ids(
         cmd.cli_ctx, namespace, 'load_balancer_backend_address_pool_ids', 'backendAddressPools')
-
-
-def validate_address_pool_name_or_id(cmd, namespace):
-    from msrestazure.tools import is_valid_resource_id
-    pool_name = namespace.backend_address_pool
-    lb_name = namespace.load_balancer_name
-
-    if is_valid_resource_id(pool_name):
-        if lb_name:
-            raise CLIError('Please omit --lb-name when specifying an address pool ID.')
-    else:
-        if not lb_name:
-            raise CLIError('Please specify --lb-name when specifying an address pool name.')
-        namespace.backend_address_pool = _generate_lb_subproperty_id(
-            cmd.cli_ctx, namespace, 'backendAddressPools', pool_name)
 
 
 def validate_address_prefixes(namespace):
@@ -259,21 +231,6 @@ def validate_inbound_nat_rule_id_list(cmd, namespace):
         cmd.cli_ctx, namespace, 'load_balancer_inbound_nat_rule_ids', 'inboundNatRules')
 
 
-def validate_inbound_nat_rule_name_or_id(cmd, namespace):
-    from msrestazure.tools import is_valid_resource_id
-    rule_name = namespace.inbound_nat_rule
-    lb_name = namespace.load_balancer_name
-
-    if is_valid_resource_id(rule_name):
-        if lb_name:
-            raise CLIError('Please omit --lb-name when specifying an inbound NAT rule ID.')
-    else:
-        if not lb_name:
-            raise CLIError('Please specify --lb-name when specifying an inbound NAT rule name.')
-        namespace.inbound_nat_rule = _generate_lb_subproperty_id(
-            cmd.cli_ctx, namespace, 'inboundNatRules', rule_name)
-
-
 def validate_ip_tags(cmd, namespace):
     ''' Extracts multiple space-separated tags in TYPE=VALUE format '''
     IpTag = cmd.get_models('IpTag')
@@ -311,32 +268,9 @@ def validate_peering_type(namespace):
                 'missing required MicrosoftPeering parameter --advertised-public-prefixes')
 
 
-def validate_public_ip_prefix(cmd, namespace):
-    from msrestazure.tools import is_valid_resource_id, resource_id
-    if namespace.public_ip_prefix and not is_valid_resource_id(namespace.public_ip_prefix):
-        namespace.public_ip_prefix = resource_id(
-            subscription=get_subscription_id(cmd.cli_ctx),
-            resource_group=namespace.resource_group_name,
-            name=namespace.public_ip_prefix,
-            namespace='Microsoft.Network',
-            type='publicIPPrefixes')
-
-
 def validate_private_ip_address(namespace):
     if namespace.private_ip_address and hasattr(namespace, 'private_ip_address_allocation'):
         namespace.private_ip_address_allocation = 'static'
-
-
-def validate_route_filter(cmd, namespace):
-    from msrestazure.tools import is_valid_resource_id, resource_id
-    if namespace.route_filter:
-        if not is_valid_resource_id(namespace.route_filter):
-            namespace.route_filter = resource_id(
-                subscription=get_subscription_id(cmd.cli_ctx),
-                resource_group=namespace.resource_group_name,
-                namespace='Microsoft.Network',
-                type='routeFilters',
-                name=namespace.route_filter)
 
 
 def get_public_ip_validator(has_type_field=False, allow_none=False, allow_new=False,
@@ -475,19 +409,6 @@ def validate_subresource_list(cmd, namespace):
         for item in namespace.target_resources:
             subresources.append(SubResource(id=item))
         namespace.target_resources = subresources
-
-
-def validate_target_listener(cmd, namespace):
-    from msrestazure.tools import is_valid_resource_id, resource_id
-    if namespace.target_listener and not is_valid_resource_id(namespace.target_listener):
-        namespace.target_listener = resource_id(
-            subscription=get_subscription_id(cmd.cli_ctx),
-            resource_group=namespace.resource_group_name,
-            name=namespace.application_gateway_name,
-            namespace='Microsoft.Network',
-            type='applicationGateways',
-            child_type_1='httpListeners',
-            child_name_1=namespace.target_listener)
 
 
 def get_virtual_network_validator(has_type_field=False, allow_none=False, allow_new=False,
@@ -712,7 +633,7 @@ def process_nic_create_namespace(cmd, namespace):
 
 def process_public_ip_create_namespace(cmd, namespace):
     get_default_location_from_resource_group(cmd, namespace)
-    validate_public_ip_prefix(cmd, namespace)
+    cmd.validate_arg('public_ip_prefix', namespace)
     validate_ip_tags(cmd, namespace)
     validate_tags(namespace)
 
@@ -781,7 +702,7 @@ def process_tm_endpoint_create_namespace(cmd, namespace):
 
 def process_vnet_create_namespace(cmd, namespace):
     get_default_location_from_resource_group(cmd, namespace)
-    validate_ddos_name_or_id(cmd, namespace)
+    cmd.validate_arg('ddos_protection_plan', namespace)
     validate_tags(namespace)
 
     if namespace.subnet_prefix and not namespace.subnet_name:

@@ -531,7 +531,7 @@ def load_command_table(self, _):
 
     # region NetworkInterfaces: (NIC)
     with self.command_group('network nic', network_nic_sdk) as g:
-        g.custom_command('create', 'create_nic', transform=transform_nic_create_output, validator=process_nic_create_namespace, supports_no_wait=True)
+        g.custom_command('create', 'create_nic', transform=transform_nic_create_output, supports_no_wait=True)
         g.command('delete', 'delete', supports_no_wait=True)
         g.show_command('show', 'get')
         g.custom_command('list', 'list_nics')

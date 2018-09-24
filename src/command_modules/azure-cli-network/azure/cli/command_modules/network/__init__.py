@@ -16,7 +16,11 @@ class NetworkCommandsLoader(AzCommandsLoader):
     def __init__(self, cli_ctx=None):
         from azure.cli.core import ModExtensionSuppress
         from azure.cli.core.commands import CliCommandType
+        from azure.cli.core.commands.arm import ArmResource
         network_custom = CliCommandType(operations_tmpl='azure.cli.command_modules.network.custom#{}')
+        subnet_type = ArmResource(dest='subnet', description='subnet', id_template='Microsoft.Network/virtualNetworks/name/subnets/name', arm_type='Microsoft.Network/virtualNewtorks', path='subnets')
+
+
         super(NetworkCommandsLoader, self).__init__(cli_ctx=cli_ctx,
                                                     resource_type=ResourceType.MGMT_NETWORK,
                                                     custom_command_type=network_custom,

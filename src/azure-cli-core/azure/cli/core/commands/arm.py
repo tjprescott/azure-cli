@@ -27,6 +27,46 @@ logger = get_logger(__name__)
 EXCLUDED_NON_CLIENT_PARAMS = list(set(EXCLUDED_PARAMS) - set(['self', 'client']))
 
 
+class ArmResource(object):
+
+    def __init__(self, dest, description, id_template, arm_type=None, path=None):
+        self.dest = dest
+        self.description = description
+        self.id_template = id_template
+        self.arm_type = arm_type
+        self.path = path
+        self._top_level = not path
+
+    def list(self, cli_ctx, resource_group=None, *args):
+        if self._top_level:
+            # top level resources can be retrieved with the list operations
+            from azure.cli.core.commands.parameters import (
+                get_resources_in_resource_group, get_resources_in_subscription)
+            if resource_group:
+                return get_resources_in_resource_group(cli_ctx, resource_group, resource_type=self.arm_type)
+            return get_resources_in_subscription(cli_ctx, self.arm_type)
+
+        # if non-top-level resource, must retrieve the item with show API
+        resource = get_arm_resource_by_id(
+            cli_ctx,
+            arm_id=resource_id(**template_parts))
+        matches = retrieve_from_path(resource, path, namespace)
+        names = []
+        for item in matches:
+            try:
+                names.append(item.name)
+            except AttributeError:
+                names.append(item.get('name'))
+        return names
+
+
+    def show(self, cli_ctx, *args):
+        pass
+
+    def delete():
+        pass
+
+
 # pylint:disable=too-many-lines
 class ArmTemplateBuilder(object):
 
@@ -1107,3 +1147,35 @@ def get_arm_resource_by_id(cli_ctx, arm_id, api_version=None):
             api_version = next((x for x in rt.api_versions if not x.endswith('preview')), rt.api_versions[0])
 
     return client.resources.get_by_id(arm_id, api_version)
+
+
+def retrieve_from_path(instance, path, namespace):
+    # path accepts the pattern property.[name].property.[name]
+    _DEST_RE = re.compile(r'\[(?P<dest>.*)\]')
+
+    def _process_property_or_dest(val):
+        match = _DEST_RE.match(val)
+        return match.groupdict() if match else {'property': val}
+
+    def _get_prop(item, prop_name):
+        if isinstance(item, dict):
+            return item.get(prop_name, None)
+        else:
+            return getattr(item, prop_name, None)
+
+    curr_item = instance
+    path_comps = path.split('.')
+
+    for comp in path_comps:
+        prop_or_name = _process_property_or_dest(comp)
+        if prop_or_name.get('dest', None):
+            # name
+            name = getattr(namespace, prop_or_name.get('dest'))
+            curr_item = next((x for x in curr_item if x.name == name), None)
+        else:
+            # property
+            match = _get_prop(curr_item, comp)
+            if not match:
+                match = _get_prop(curr_item.properties, comp)
+            curr_item = match
+    return curr_item

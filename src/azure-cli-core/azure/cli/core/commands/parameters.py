@@ -3,7 +3,6 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-
 import argparse
 import platform
 
@@ -504,3 +503,176 @@ class AzArgumentContext(ArgumentsContext):
                                                      operation_group=operation_group):
             merged_kwargs.pop('dest', None)
             super(AzArgumentContext, self).extra(argument_dest=dest, **merged_kwargs)
+
+    def subresource(self, type_template, arm_type=None, path=None, **kwargs):
+        """ Creates an argument that can accept one or more names or IDs.
+        - type_template: ARM ID template, where dest values can be used in square brackets
+                         (ex: virtualNetworks/[vnet_name]/)
+        - arm_type: The resource type of the root resource, as shown in the `az provider list` command
+        - path: The dotted-path to the target subresource collection. Dest values can be used in square brackets.
+                Omit for top-level resources.
+        """
+        from collections import OrderedDict
+        import re
+        from msrestazure.tools import is_valid_resource_id, resource_id
+        from azure.cli.core.commands.client_factory import get_subscription_id
+        from argcomplete import warn
+
+        _DEST_RE = re.compile(r'\[(?P<dest>.*)\]')
+
+        _ARMID_RE = re.compile(
+            '((?i)/subscriptions/(?P<subscription>[^/]*))?(/resourceGroups/(?P<resource_group>[^/]*))?'
+            '(/providers/)?(?P<namespace>[^/]*)/(?P<type>[^/]*)/(?P<name>[^/]*)(?P<children>.*)')
+
+        _CHILDREN_RE = re.compile('(?i)(/providers/(?P<child_namespace>[^/]*))?/'
+                                  '(?P<child_type>[^/]*)/(?P<child_name>[^/]*)')
+
+        def _process_name_or_dest(val):
+            match = _DEST_RE.match(val)
+            return match.groupdict() if match else {'name': val}
+
+        def _parse_resource_id(rid):
+            # modified from msrestazure.tools to allow parsing without subscription and/or resource group
+            if not rid:
+                return {}
+            match = _ARMID_RE.match(rid)
+            result = match.groupdict() if match else {}
+            children = _CHILDREN_RE.finditer(result.get('children', rid))
+            count = None
+            ordered_dest = OrderedDict()
+            ordered_dest['name'] = _process_name_or_dest(result['name']).get('dest')
+            for count, child in enumerate(children):
+                child_dict = child.groupdict().items()
+                result.update({key + '_%d' % (count + 1): group for key, group in child_dict})
+                ordered_dest['child_name_{}'.format(count + 1)] = _process_name_or_dest(result.get('child_name_{}'.format(count + 1), {})).get('dest')
+            result['_last_child_num'] = count + 1 if isinstance(count, int) else None
+            result['_ordered_dest'] = ordered_dest
+            return {key: value for key, value in result.items() if value is not None}
+
+        def _fill_dest_values(namespace, template_parts):
+            for key, val in template_parts.items():
+                try:
+                    dest = _process_name_or_dest(val).get('dest', None)
+                    if dest:
+                        template_parts[key] = getattr(namespace, dest, None)
+                except TypeError:
+                    pass
+
+        def _lookup_option(cmd, dest):
+            options = cmd.arguments[dest].type.settings['options_list']
+            return next(x for x in options if x.startswith('--'))
+
+        template_parts = _parse_resource_id(type_template)
+
+        # the dest for the argument will be the most specific (right-most) in the template
+        primary_dest_key = 'child_name_{}'.format(template_parts['_last_child_num']) \
+            if template_parts.get('_last_child_num', None) else 'name'
+        final_name_value = template_parts[primary_dest_key]
+        primary_dest = _process_name_or_dest(final_name_value).get('dest', None)
+        if not primary_dest:
+            raise ValueError('command authoring error: the template must end with a dest reference '
+                             'in square brackets (ex: [subnet])')
+        if any([arm_type, path]) and not all([arm_type, path]):
+            raise ValueError('command authoring error: for non-top level resources, '
+                             '`arm_type` and `path` must be supplied.')
+
+        # the completer strategy is very different for top-level resources and subresources
+        is_top_level = not any([arm_type, path])
+
+        def _validate_subresource(cmd, namespace):
+
+            # if this property is not applicable, return early
+            primary_dest_val = getattr(namespace, primary_dest, None)
+            if not primary_dest_val:
+                return
+
+            # these likely won't be provided in the template, so fill in the gaps
+            template_parts['resource_group'] = template_parts.get('resource_group', namespace.resource_group_name)
+            template_parts['subscription'] = template_parts.get('subscription', get_subscription_id(cmd.cli_ctx))
+
+            # perform the validation logic
+            dest_values = {}
+            for key, val in template_parts.items():
+                try:
+                    dest = _process_name_or_dest(val).get('dest', None)
+                    dest_values[dest] = getattr(namespace, dest, None)
+                except TypeError:
+                    pass
+            dest_values.pop(primary_dest)
+            usage_statement = '{opt} ID | {opt} NAME'.format(opt=_lookup_option(cmd, primary_dest))
+            for key in dest_values:
+                usage_statement = usage_statement + ' {} NAME'.format(_lookup_option(cmd, key))
+
+            # replace the dest placeholders with the actual values to populate the ID
+            _fill_dest_values(namespace, template_parts)
+
+            # validator needs to work with single or multiple values
+            is_list = isinstance(primary_dest_val, list)
+            if not is_list:
+                primary_dest_val = [primary_dest_val]
+
+            id_list = []
+
+            # perform the actual name or ID logic
+            for val in primary_dest_val:
+                if not is_valid_resource_id(val):
+                    # ensure that all dest values are supplied
+                    if any([True for x in dest_values.values() if not x]):
+                        raise CLIError('usage error: {}'.format(usage_statement))
+                    template_parts[primary_dest_key] = val
+                    val = resource_id(**template_parts)
+                else:
+                    if any([x for x in dest_values.values()]):
+                        raise CLIError('usage error: {}'.format(usage_statement))
+                id_list.append(val)
+            setattr(namespace, primary_dest, id_list if is_list else id_list[0])
+
+        @Completer
+        def _completer(cmd, prefix, namespace, **kwargs):  # pylint: disable=unused-argument
+            from azure.cli.core.commands.arm import get_arm_resource_by_id, retrieve_from_path
+
+            # these likely won't be provided in the template, so fill in the gaps
+            template_parts['resource_group'] = template_parts.get('resource_group', namespace.resource_group_name)
+            template_parts['subscription'] = template_parts.get('subscription', get_subscription_id(cmd.cli_ctx))
+
+            _fill_dest_values(namespace)
+
+            rg = template_parts['resource_group']
+            resource_type = arm_type or '{namespace}/{type}'.format(**template_parts)
+            if is_top_level:
+                # top-level resources can utilize list APIs
+                if rg:
+                    return [r.name for r in get_resources_in_resource_group(
+                        cmd.cli_ctx, rg, resource_type=resource_type)]
+                return [r.name for r in get_resources_in_subscription(cmd.cli_ctx, resource_type)]
+
+            # if non-top-level resource, must retrieve the item with show API
+            resource = get_arm_resource_by_id(
+                cmd.cli_ctx,
+                arm_id=resource_id(**template_parts))
+            matches = retrieve_from_path(resource, path, namespace)
+            names = []
+            for item in matches:
+                try:
+                    names.append(item.name)
+                except AttributeError:
+                    names.append(item.get('name'))
+            return names
+
+        # register validator, completer and help string on the primary dest
+        # register completer and help string on secondary dests
+
+        # TODO: Build help string?
+        kwargs['validator'] = _validate_subresource
+        kwargs['completer'] = _completer
+        return self.argument(primary_dest, **kwargs)
+
+    def enum(self, dest, data, default=None, **kwargs):
+        arg_type = get_enum_type(data, default)
+        return self.argument(dest, arg_type, **kwargs)
+
+    def three_state_flag(self, dest, positive_label='true', negative_label='false', invert=False,
+                         return_label=False, **kwargs):
+        arg_type = get_three_state_flag(positive_label=positive_label, negative_label=negative_label,
+                                        invert=invert, return_label=return_label)
+        return self.argument(dest, arg_type, **kwargs)

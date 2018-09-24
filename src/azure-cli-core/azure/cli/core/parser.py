@@ -91,7 +91,7 @@ class AzCliCommandParser(CLICommandParser):
                                                   _command_source=metadata.command_source)
             command_parser.cli_ctx = self.cli_ctx
             command_validator = metadata.validator
-            argument_validators = []
+            argument_validators = {}
             argument_groups = {}
             for _, arg in metadata.arguments.items():
                 # don't add deprecated arguments to the parser
@@ -100,7 +100,7 @@ class AzCliCommandParser(CLICommandParser):
                     continue
 
                 if arg.validator:
-                    argument_validators.append(arg.validator)
+                    argument_validators[arg.type.settings['dest']] = arg.validator
                 try:
                     if arg.arg_group:
                         try:
