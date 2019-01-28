@@ -156,7 +156,7 @@ def create_application_gateway(cmd, application_gateway_name, resource_group_nam
                                virtual_network_name=None, vnet_address_prefix='10.0.0.0/16',
                                public_ip_address_type=None, subnet_type=None, validate=False,
                                connection_draining_timeout=0, enable_http2=None, min_capacity=None, zones=None,
-                               custom_error_pages=None):
+                               custom_error_pages=None, enable_fips=None):
     from azure.cli.core.util import random_string
     from azure.cli.core.commands.arm import ArmTemplateBuilder
     from azure.cli.command_modules.network._template_builder import (
@@ -207,7 +207,7 @@ def create_application_gateway(cmd, application_gateway_name, resource_group_nam
         private_ip_address, private_ip_allocation, cert_data, cert_password,
         http_settings_cookie_based_affinity, http_settings_protocol, http_settings_port,
         http_listener_protocol, routing_rule_type, public_ip_id, subnet_id,
-        connection_draining_timeout, enable_http2, min_capacity, zones, custom_error_pages)
+        connection_draining_timeout, enable_http2, min_capacity, zones, custom_error_pages, enable_fips)
     app_gateway_resource['dependsOn'] = ag_dependencies
     master_template.add_variable(
         'appGwID',
@@ -233,7 +233,7 @@ def create_application_gateway(cmd, application_gateway_name, resource_group_nam
 
 
 def update_application_gateway(instance, sku=None, capacity=None, tags=None, enable_http2=None, min_capacity=None,
-                               custom_error_pages=None):
+                               custom_error_pages=None, enable_fips=None):
     if sku is not None:
         instance.sku.name = sku
         instance.sku.tier = sku.split('_', 1)[0] if 'v2' not in sku else sku
@@ -247,6 +247,7 @@ def update_application_gateway(instance, sku=None, capacity=None, tags=None, ena
         instance.autoscale_configuration.min_capacity = min_capacity
     if custom_error_pages is not None:
         instance.custom_error_configurations = custom_error_pages
+    _set_param(instance, 'enable_fips', enable_fips)
     return instance
 
 
