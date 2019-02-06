@@ -336,6 +336,14 @@ def update_ag_frontend_port(instance, parent, item_name, port=None):
     return parent
 
 
+def create_ag_gateway_ip_configuration(cmd, resource_group_name, application_gateway_name, item_name, subnet):
+    pass
+
+
+def update_ag_gateway_ip_configuration(cmd, resource_group_name, application_gateway_name, item_name, subnet):
+    pass
+
+
 def create_ag_http_listener(cmd, resource_group_name, application_gateway_name, item_name,
                             frontend_port, frontend_ip=None, host_name=None, ssl_cert=None,
                             no_wait=False):

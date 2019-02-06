@@ -140,6 +140,7 @@ def load_arguments(self, _):
         {'name': 'ssl-cert', 'display': 'SSL certificate', 'ref': 'ssl_certificates'},
         {'name': 'frontend-ip', 'display': 'frontend IP configuration', 'ref': 'frontend_ip_configurations'},
         {'name': 'frontend-port', 'display': 'frontend port', 'ref': 'frontend_ports'},
+        {'name': 'gateway-ip', 'display': 'gateway IP configuration', 'ref': 'gateway_ip_configurations'},
         {'name': 'address-pool', 'display': 'backend address pool', 'ref': 'backend_address_pools'},
         {'name': 'http-settings', 'display': 'backed HTTP settings', 'ref': 'backend_http_settings_collection'},
         {'name': 'http-listener', 'display': 'HTTP listener', 'ref': 'http_listeners'},

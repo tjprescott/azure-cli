@@ -302,6 +302,38 @@ helps['network application-gateway frontend-port update'] = """
 """
 # endregion
 
+# region Application Gateway Gateway IP configuration
+helps['network application-gateway gateway-ip'] = """
+    type: group
+    short-summary: Manage gateway IP configurations of an application gateway.
+"""
+
+helps['network application-gateway gateway-ip create'] = """
+    type: command
+    short-summary: Create a gateway IP configuration.
+"""
+
+helps['network application-gateway gateway-ip delete'] = """
+    type: command
+    short-summary: Delete a gateway IP configuration.
+"""
+
+helps['network application-gateway gateway-ip list'] = """
+    type: command
+    short-summary: List gateway IP configurations.
+"""
+
+helps['network application-gateway gateway-ip show'] = """
+    type: command
+    short-summary: Get the details of a gateway IP configuration.
+"""
+
+helps['network application-gateway gateway-ip update'] = """
+    type: command
+    short-summary: Update a gateway IP configuration.
+"""
+# endregion
+
 # region Application Gateway HTTP listener
 helps['network application-gateway http-listener'] = """
     type: group
