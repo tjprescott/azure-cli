@@ -13,7 +13,8 @@ from azure.cli.core.commands.client_factory import get_subscription_id
 from azure.cli.core.profiles import supported_api_version, ResourceType
 
 from azure.cli.testsdk import (
-    ScenarioTest, LiveScenarioTest, ResourceGroupPreparer, StorageAccountPreparer, live_only)
+    ScenarioTest, LiveScenarioTest, ResourceGroupPreparer, StorageAccountPreparer, live_only,
+    SubscriptionPreparer)
 
 from knack.util import CLIError
 
@@ -2500,6 +2501,21 @@ class NetworkProfileScenarioTest(ScenarioTest):
             self.cmd('network profile show -g {rg} -n dummy')
         self.cmd('network profile delete -g {rg} -n dummy -y')
 
+
+class NetworkCrossSubscription(ScenarioTest):
+
+    @SubscriptionPreparer(name='Azure SDK sandbox', parameter_name='sub1')
+    @ResourceGroupPreparer(name_prefix='test_network_x_subscription_', subscription='Azure SDK sandbox')
+    def test_network_x_subscription(self, resource_group, sub1):
+
+        self.kwargs.update({
+            'vnet': 'vnet',
+            'sub1': sub1
+        })
+
+        self.cmd('network vnet create -g {rg} -n {vnet} --subscription "{sub1}"')
+        self.cmd('network vnet show -g {rg} -n {vnet} --subscription "{sub1}"')
+        
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,28 +6,104 @@
 import os
 from datetime import datetime
 
-from azure_devtools.scenario_tests import AbstractPreparer, SingleValueReplacer
-
+from azure_devtools.scenario_tests import AbstractPreparer, SingleValueReplacer, ReplayableTest, RecordingProcessor
 from .base import execute
 from .exceptions import CliTestError
 from .reverse_dependency import get_dummy_cli
 
 
-# Resource Group Preparer and its shorthand decorator
+# Subscription Preparer and its shorthand decorator
+class SubscriptionPreparer(SingleValueReplacer):
 
+    def __init__(self, name, disable_recording=False):
+        self.name = name
+        self.sub_moniker = None
+        self.sub_random_name = None
+        self.test_class_instance = None
+        self.live_test = False
+        self.disable_recording = disable_recording
+
+    def __call__(self, fn):
+        def _preparer_wrapper(test_class_instance, **kwargs):
+            self.live_test = not isinstance(test_class_instance, ReplayableTest)
+            self.test_class_instance = test_class_instance
+
+            if self.live_test or test_class_instance.in_recording:
+                name = self.random_name
+                if not self.live_test and isinstance(self, RecordingProcessor):
+                    test_class_instance.recording_processors.append(self)
+            else:
+                resource_name = self.moniker
+
+            with self.override_disable_recording():
+                parameter_update = self.create_resource(
+                    resource_name,
+                    **kwargs
+                )
+
+            if parameter_update:
+                kwargs.update(parameter_update)
+
+            trim_kwargs_from_test_function(fn, kwargs)
+            fn(test_class_instance, **kwargs)
+
+        setattr(_preparer_wrapper, '__is_preparer', True)
+        functools.update_wrapper(_preparer_wrapper, fn)
+        return _preparer_wrapper
+
+    @contextlib.contextmanager
+    def override_disable_recording(self):
+        if hasattr(self.test_class_instance, 'disable_recording'):
+            orig_enabled = self.test_class_instance.disable_recording
+            self.test_class_instance.disable_recording = self.disable_recording
+            yield
+            self.test_class_instance.disable_recording = orig_enabled
+        else:
+            yield
+
+    @property
+    def moniker(self):
+        if not self.resource_moniker:
+            self.test_class_instance.test_resources_count += 1
+            self.resource_moniker = '{}{:06}'.format(self.name_prefix,
+                                                     self.test_class_instance.test_resources_count)
+        return self.resource_moniker
+
+    def create_random_name(self):
+        return create_random_name(self.name_prefix, self.name_len)
+
+    @property
+    def random_name(self):
+        if not self.resource_random_name:
+            self.resource_random_name = self.create_random_name()
+        return self.resource_random_name
+
+    def create_resource(self, name, **kwargs):  # pylint: disable=unused-argument,no-self-use
+        return {}
+
+    def remove_resource(self, name, **kwargs):  # pylint: disable=unused-argument
+        pass
+
+    def remove_resource_with_record_override(self, name, **kwargs):
+        with self.override_disable_recording():
+            self.remove_resource(name, **kwargs)
+
+
+# Resource Group Preparer and its shorthand decorator
 class ResourceGroupPreparer(AbstractPreparer, SingleValueReplacer):
     def __init__(self, name_prefix='clitest.rg',
                  parameter_name='resource_group',
                  parameter_name_for_location='resource_group_location', location='westus',
                  dev_setting_name='AZURE_CLI_TEST_DEV_RESOURCE_GROUP_NAME',
                  dev_setting_location='AZURE_CLI_TEST_DEV_RESOURCE_GROUP_LOCATION',
-                 random_name_length=75, key='rg'):
+                 random_name_length=75, key='rg', subscription=None):
         super(ResourceGroupPreparer, self).__init__(name_prefix, random_name_length)
         self.cli_ctx = get_dummy_cli()
         self.location = location
         self.parameter_name = parameter_name
         self.parameter_name_for_location = parameter_name_for_location
         self.key = key
+        self.subscription = subscription
 
         self.dev_setting_name = os.environ.get(dev_setting_name, None)
         self.dev_setting_location = os.environ.get(dev_setting_location, location)
@@ -43,13 +119,18 @@ class ResourceGroupPreparer(AbstractPreparer, SingleValueReplacer):
         tags = ' '.join(['{}={}'.format(key, value) for key, value in tags.items()])
 
         template = 'az group create --location {} --name {} --tag ' + tags
+        if self.subscription:
+            template = template + ' --subscription "{}"'.format(self.subscription)
         execute(self.cli_ctx, template.format(self.location, name))
         self.test_class_instance.kwargs[self.key] = name
         return {self.parameter_name: name, self.parameter_name_for_location: self.location}
 
     def remove_resource(self, name, **kwargs):
         if not self.dev_setting_name:
-            execute(self.cli_ctx, 'az group delete --name {} --yes --no-wait'.format(name))
+            template = 'az group delete --name {} --yes --no-wait'.format(name)
+            if self.subscription:
+                template = template + ' --subscription "{}"'.format(self.subscription)
+            execute(self.cli_ctx, template)
 
 
 # Storage Account Preparer and its shorthand decorator
