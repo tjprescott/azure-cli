@@ -132,7 +132,7 @@ def load_command_table(self, _):  # pylint: disable=too-many-statements
         g.command('show-manifests', 'acr_repository_show_manifests')
         g.command('show', 'acr_repository_show')
         g.command('update', 'acr_repository_update')
-        g.command('delete', 'acr_repository_delete')
+        g.command('delete', 'acr_repository_delete', supports_no_wait=True)
         g.command('untag', 'acr_repository_untag')
 
     with self.command_group('acr webhook', acr_webhook_util) as g:
