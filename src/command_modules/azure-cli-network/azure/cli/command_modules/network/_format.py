@@ -101,6 +101,9 @@ def transform_vpn_connection(result):
 
 
 def transform_vnet_create_output(result):
+    from azure.cli.core.commands import DeferredObject
+    if isinstance(result, DeferredObject):
+        return result.result()
     return {'newVNet': result.result()}
 
 

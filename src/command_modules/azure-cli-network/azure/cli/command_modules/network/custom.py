@@ -14,7 +14,7 @@ from knack.log import get_logger
 from azure.mgmt.trafficmanager.models import MonitorProtocol, ProfileStatus
 
 # pylint: disable=no-self-use,no-member,too-many-lines,unused-argument
-from azure.cli.core.commands import cached_get, cached_put
+from azure.cli.core.commands import piped_get, piped_put
 from azure.cli.core.commands.client_factory import get_subscription_id, get_mgmt_service_client
 
 from azure.cli.core.util import CLIError, sdk_no_wait, find_child_item, find_child_collection
@@ -2306,7 +2306,7 @@ def create_lb_rule(
         floating_ip=None, idle_timeout=None, enable_tcp_reset=None, disable_outbound_snat=None):
     LoadBalancingRule = cmd.get_models('LoadBalancingRule')
     ncf = network_client_factory(cmd.cli_ctx)
-    lb = cached_get(cmd, ncf.load_balancers.get, resource_group_name, load_balancer_name)
+    lb = piped_get(cmd, ncf.load_balancers.get, resource_group_name, load_balancer_name)
     if not frontend_ip_name:
         frontend_ip_name = _get_default_name(lb, 'frontend_ip_configurations', '--frontend-ip-name')
     if not backend_address_pool_name:
@@ -2327,7 +2327,7 @@ def create_lb_rule(
         enable_tcp_reset=enable_tcp_reset,
         disable_outbound_snat=disable_outbound_snat)
     _upsert(lb, 'load_balancing_rules', new_rule, 'name')
-    poller = cached_put(cmd, ncf.load_balancers.create_or_update, lb, resource_group_name, load_balancer_name)
+    poller = piped_put(cmd, ncf.load_balancers.create_or_update, lb, resource_group_name, load_balancer_name)
     return _get_property(poller.result().load_balancing_rules, item_name)
 
 
@@ -3505,7 +3505,7 @@ def create_vnet(cmd, resource_group_name, vnet_name, vnet_prefixes='10.0.0.0/16'
         vnet.enable_vm_protection = vm_protection
     if cmd.supported_api_version(min_api='2018-02-01'):
         vnet.ddos_protection_plan = SubResource(id=ddos_protection_plan) if ddos_protection_plan else None
-    return cached_put(cmd, client.create_or_update, vnet, resource_group_name, vnet_name)
+    return piped_put(cmd, client.create_or_update, vnet, resource_group_name, vnet_name)
 
 
 def update_vnet(cmd, instance, vnet_prefixes=None, dns_servers=None, ddos_protection=None, vm_protection=None,
@@ -3580,9 +3580,9 @@ def create_subnet(cmd, resource_group_name, virtual_network_name, subnet_name,
     if delegations:
         subnet.delegations = delegations
 
-    vnet = cached_get(cmd, ncf.virtual_networks.get, resource_group_name, virtual_network_name)
+    vnet = piped_get(cmd, ncf.virtual_networks.get, resource_group_name, virtual_network_name)
     _upsert(vnet, 'subnets', subnet, 'name')
-    vnet = cached_put(
+    vnet = piped_put(
         cmd, ncf.virtual_networks.create_or_update, vnet, resource_group_name, virtual_network_name).result()
     return _get_property(vnet.subnets, subnet_name)
 

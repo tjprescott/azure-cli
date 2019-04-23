@@ -13,7 +13,7 @@ import re
 from six import string_types
 
 from azure.cli.core import AzCommandsLoader, EXCLUDED_PARAMS
-from azure.cli.core.commands import LongRunningOperation, _is_poller, cached_get, cached_put
+from azure.cli.core.commands import LongRunningOperation, _is_poller, piped_get, piped_put
 from azure.cli.core.commands.client_factory import get_mgmt_service_client
 from azure.cli.core.commands.validators import IterateValue
 from azure.cli.core.util import (
@@ -496,12 +496,12 @@ def _cli_generic_update_command(context, name, getter_op, setter_op, setter_arg_
         getter, getterargs = _extract_handler_and_args(args, cmd.command_kwargs, getter_op, context_copy)
 
         if child_collection_prop_name:
-            parent = cached_get(cmd, getter, **getterargs)
+            parent = piped_get(cmd, getter, **getterargs)
             instance = find_child_item(
                 parent, *child_names, path=child_collection_prop_name, key_path=child_collection_key)
         else:
             parent = None
-            instance = cached_get(cmd, getter, **getterargs)
+            instance = piped_get(cmd, getter, **getterargs)
 
         # pass instance to the custom_function, if provided
         if custom_function_op:
@@ -550,9 +550,9 @@ def _cli_generic_update_command(context, name, getter_op, setter_op, setter_arg_
                 setterargs[no_wait_param] = args[no_wait_param]
 
         if setter_arg_name == 'parameters':
-            result = cached_put(cmd, setter, **setterargs)
+            result = piped_put(cmd, setter, **setterargs)
         else:
-            result = cached_put(cmd, setter, setterargs[setter_arg_name], **setterargs)
+            result = piped_put(cmd, setter, setterargs[setter_arg_name], **setterargs)
 
         if supports_no_wait and no_wait_enabled:
             return None
