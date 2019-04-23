@@ -175,7 +175,6 @@ def _pre_command_table_create(cli_ctx, args):
 #             raise CLIError('unable to resolve resource type for cache object')
 #         rt_regex = re.compile(r'.*[\\/]operations[\\/](?P<rt>[a-zA-Z_]*)s_operations.*')
 #         try:
-#             print(op_string)
 #             match_comps = rt_regex.findall(op_string)[0].split('_')
 #         except IndexError:
 #             raise CLIError('unable to resolve resource type for cache object')
@@ -279,7 +278,6 @@ class DeferredObject(object):
             raise CLIError('unable to resolve resource type for cache object')
         rt_regex = re.compile(r'.*[\\/]operations[\\/](?P<rt>[a-zA-Z_]*)s_operations.*')
         try:
-            print(op_string)
             match_comps = rt_regex.findall(op_string)[0].split('_')
         except IndexError:
             raise CLIError('unable to resolve resource type for cache object')
@@ -288,6 +286,19 @@ class DeferredObject(object):
     def result(self):
         model_cls = self._cmd.get_models(self._model_type)
         return model_cls.deserialize(self._payload)
+
+    def __getattribute__(self, key):
+        try:
+            payload = object.__getattribute__(self, '_payload')
+            return payload.__getattribute__(key)
+        except AttributeError:
+            return super(DeferredObject, self).__getattribute__(key)
+
+    def __setattr__(self, key, value):
+        try:
+            return self._payload.__setattr__(key, value)
+        except AttributeError:
+            return super(DeferredObject, self).__setattr__(key, value)
 
 
 class AzCliCommand(CLICommand):
@@ -391,30 +402,26 @@ def piped_get(cmd_obj, operation, *args, **kwargs):
         payload = json.loads(sys.stdin.read())
     except t_JSONDecodeError:
         raise CLIError('unable to read from STDIN.')
-    return DeferredObject(cmd_obj, payload, operation)
+    def_obj = DeferredObject(cmd_obj, payload, operation)
+    # payload must be deserialized to the proper object
+    def_obj._payload = def_obj.result()  # pylint: disable=protected-access
+    return def_obj
 
 
 def piped_put(cmd_obj, operation, parameters, *args, **kwargs):
     def _put_operation():
         result = None
-        put_params = parameters
-        try:
-            put_params = put_params.result()
-        except AttributeError:
-            pass
         if args:
-            extended_args = args + (put_params,)
+            extended_args = args + (parameters,)
             result = operation(*extended_args)
         elif kwargs is not None:
-            result = operation(parameters=put_params, **kwargs)
+            result = operation(parameters=parameters, **kwargs)
         return result
 
-    cache_opt = cmd_obj.cli_ctx.data.get('_defer', False)
-
-    if not cache_opt:
+    defer_opt = cmd_obj.cli_ctx.data.get('_defer', False)
+    if not defer_opt:
         return _put_operation()
-
-    return DeferredObject(cmd_obj, parameters, operation)
+    return DeferredObject(cmd_obj, parameters.serialize(), operation)
 
 
 # pylint: disable=too-few-public-methods

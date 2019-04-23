@@ -14,7 +14,7 @@ from knack.log import get_logger
 from azure.mgmt.trafficmanager.models import MonitorProtocol, ProfileStatus
 
 # pylint: disable=no-self-use,no-member,too-many-lines,unused-argument
-from azure.cli.core.commands import piped_get, piped_put
+from azure.cli.core.commands import piped_get, piped_put, DeferredObject
 from azure.cli.core.commands.client_factory import get_subscription_id, get_mgmt_service_client
 
 from azure.cli.core.util import CLIError, sdk_no_wait, find_child_item, find_child_collection
@@ -3584,6 +3584,8 @@ def create_subnet(cmd, resource_group_name, virtual_network_name, subnet_name,
     _upsert(vnet, 'subnets', subnet, 'name')
     vnet = piped_put(
         cmd, ncf.virtual_networks.create_or_update, vnet, resource_group_name, virtual_network_name).result()
+    if cmd.cli_ctx.data.get('_defer', False):
+        return vnet
     return _get_property(vnet.subnets, subnet_name)
 
 
